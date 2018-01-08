@@ -22,7 +22,7 @@ nx1= 14
 nx2=  6;
 NumReal=2e3;
 
-K1K2 =3;
+K1K2 =2;
 
 pcvett=rand(K1K2,1);
 pcvett=pcvett./sum(pcvett);
@@ -212,7 +212,7 @@ for i = 1: itotal
     ylabel('MMSE (dB)') 
     hold on
     plot(10*log10(vettSNRdB'),10*log10(mse_dec_optphi2_gsvd(:,:,i)),'--o','LineWidth',1) %opt phi2
-    plot(10*log10(vettSNRdB'),10*log10(mse_dec_optphi2_numercial(:,:)),'-->','LineWidth',1) %opt phi2 numerical
+%     plot(10*log10(vettSNRdB'),10*log10(mse_dec_optphi2_numercial(:,:)),'-->','LineWidth',1) %opt phi2 numerical
 end
 
     figure(2)
