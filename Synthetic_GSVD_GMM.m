@@ -20,31 +20,34 @@ np= 15; vettSNRdB=logspace(-1,6,np);
 
 nx1= 14 
 nx2=  6;
-NumReal=2e3;
+NumReal=5e3;
 
-K1K2 =2;
+K1=2;
+K2=2;
 
-pcvett=rand(K1K2,1);
+pcvett=rand(K1*K2,1);
 pcvett=pcvett./sum(pcvett);
 pctmp = pcvett;
 
-scvett=[1 1 1 1];
-s1vett=[2 2 2 2];
-s2vett=[2 2 2 2];
+% rx=6, rx1=3, rx2=5
+scvett=[2 2 2 2];
+s1vett=[1 1 1 1];
+s2vett=[3 3 3 3];
 
+% m1=1,2,3,4 and fixed m2=3
 vettM1=1:4;
-M2 = 2;
+M2 = 3;
 
-Pc1mat=zeros(nx1,max(scvett),K1K2);
-Pc2mat=zeros(nx2,max(scvett),K1K2);
-P1mat=zeros(nx1,max(s1vett),K1K2);
-P2mat=zeros(nx2,max(s2vett),K1K2);
-Sigx1x2=zeros(nx1+nx2,nx1+nx2,K1K2);
-Sigx1=zeros(nx1,nx1,K1K2);
+Pc1mat=zeros(nx1,max(scvett),K1*K2);
+Pc2mat=zeros(nx2,max(scvett),K1*K2);
+P1mat=zeros(nx1,max(s1vett),K1*K2);
+P2mat=zeros(nx2,max(s2vett),K1*K2);
+Sigx1x2=zeros(nx1+nx2,nx1+nx2,K1*K2);
+Sigx1=zeros(nx1,nx1,K1*K2);
 In=randn(max(nx1,nx2));
 In2=randn(max(nx1,nx2));
 
-for cc=1:(K1K2)
+for cc=1:(K1*K2)
     Pc1mat(:,1:scvett(cc),cc)= In(1:nx1,1+cc:scvett(cc)+cc);
     Pc2mat(:,1:scvett(cc),cc)=In2(1:nx2,1+cc:scvett(2)+cc);
     P1mat (:,1:s1vett(cc),cc)= In(1:nx1,(scvett(cc)+1+cc:scvett(cc)+s1vett(cc)+cc));
@@ -56,14 +59,14 @@ for cc=1:(K1K2)
     Sigx12(:,:,cc)=Sigx1x2(1:nx1,nx1+1:nx1+nx2,cc);
     Sigx21(:,:,cc)=Sigx1x2(nx1+1:end,1:nx1,cc);
 end
-for cc=1:(K1K2)
-    rx=rank(Sigx1x2(:,:,cc))
-    rx1=rank(Sigx1(:,:,cc))
-    rx2=rank(Sigx2(:,:,cc))    
+for cc=1:(K1*K2)
+    rx=rank(Sigx1x2(:,:,cc));
+    rx1=rank(Sigx1(:,:,cc));
+    rx2=rank(Sigx2(:,:,cc));  
 end
 
-mux1x2=zeros(nx1+nx2,K1K2);
-mux1x2=zeros(nx1+nx2,K1K2);
+mux1x2=zeros(nx1+nx2,K1*K2);
+mux1x2=zeros(nx1+nx2,K1*K2);
 mux1=mux1x2(1:nx1,:);
 mux2=mux1x2(nx1+1:end,:);
 
@@ -72,7 +75,7 @@ Phi02=randn(M2,nx2);
     
 [p,c] = size(mux1x2);
 X = zeros(p,NumReal);
-label = randsample(1:K1K2,NumReal,true,pctmp);
+label = randsample(1:K1*K2,NumReal,true,pctmp);
 for t = 1:c
     rg = find(label==t); 
     len = length(rg);
@@ -83,7 +86,7 @@ data1 = X;
 x1 = data1(1:nx1,:);
 x2 = data1(nx1+1:end,:);
 
-for kkk=1:K1K2      
+for kkk=1:K1*K2      
             AA = (Sigx2(:,:,kkk));
             BB = (Sigx2(:,:,kkk)-Sigx21(:,:,kkk)*pinv(Sigx1(:,:,kkk))*Sigx12(:,:,kkk));                    
             A = herm(sqrtm(herm(AA)));
@@ -101,8 +104,8 @@ end
 str1 = '';
 str2 = '';   
 str3 = '';  
-DesPhi_2 = zeros(K1K2*M2,nx2);
-for cc=1:K1K2
+DesPhi_2 = zeros(K1*K2*M2,nx2);
+for cc=1:K1*K2
     str1 = sprintf('tmpPhi2(:,:,%d);',cc);
     str2 = strcat(str2,str1);
     str3 = sprintf('DesPhi_2 = [%s];',str2);   
@@ -110,16 +113,9 @@ end
 eval(str3);
 
 [kk1 kk2] = size(DesPhi_2);
-[ A2 A1 ] = ndgrid( [ 1 : kk1 ]) ;
-Probnum = [ A1( : ) A2( : )];
+[ A3 A2 A1 ] = ndgrid( [ 1 : kk1 ]) ;
+Probnum = [ A1( : ) A2( : ) A3(:)];
 [kk1 kk2] = size(Probnum);
-
-for i = 1:kk1 
-    tmpclass = Probnum(i,:);
-    tmp_1    = DesPhi_2(tmpclass(1,1),:);
-    tmp_2    = DesPhi_2(tmpclass(1,2),:);
-    testPhi2(:,:,i) = [tmp_1;tmp_2];
-end
 
 itotal = kk1;
 
@@ -129,17 +125,14 @@ for nn=1:length(vettM1)
     P1=M1;     
     P2=M2;
 
+    % generte random measurement kernel associated with x1
     Phi1=Phi01(1:M1,:);
     Phi1=sqrt(P1)*Phi1./trace(herm(Phi1*Phi1'));
     Phi2=Phi02(1:M2,:);
     Phi2=sqrt(P2)*Phi2./trace(herm(Phi2*Phi2'));    
-    Phi=[Phi1 zeros(M1,nx2); zeros(M2,nx1) Phi2];
-       
-    DesPhi = zeros(M1+M2,nx1+nx2);
+    Phi=[Phi1 zeros(M1,nx2); zeros(M2,nx1) Phi2];       
     
-for i = 1:itotal
-
-    DesPhi(:,:,i)=[Phi1 zeros(M1,nx2); zeros(M2,nx1) testPhi2(:,:,i)];        
+for i = 1:itotal    
     for k = 1:np
         snr=10.^(10*log10(vettSNRdB(k))/10);
         rho=1/sqrt(snr);
@@ -157,12 +150,21 @@ for i = 1:itotal
         mse_SI_p1_p2(k,nn)=mean(sum(abs(xhat_si-data1(1:nx1,:)).^2));
         mse_SI_p1_p2(k,nn)
          
-
-        Desy = DesPhi(:,:,i)*data1 + w;        
-        RX = GMMcondMeanEstColorNoise(Desy,Sigx1x2,mux1x2,pctmp,DesPhi(:,:,i),Ri);       
+        % measurement (suboptimal) gsvd-based design  
+        tmpclass = Probnum(i,:);
+        tmp_1    = DesPhi_2(tmpclass(1,1),:);
+        tmp_2    = DesPhi_2(tmpclass(1,2),:);
+        tmp_3    = DesPhi_2(tmpclass(1,3),:);
+        testPhi2 = [tmp_1;tmp_2;tmp_3];
+        PhiDes=[Phi1 zeros(size(Phi1,1),size(Phi2,2));...
+             zeros(size(Phi2,1),size(Phi1,2))  testPhi2];
+        
+        Desy = PhiDes*data1 + w;        
+        RX = GMMcondMeanEstColorNoise(Desy,Sigx1x2,mux1x2,pctmp,PhiDes,Ri);       
         mse_dec_optphi2_gsvd(k,nn,i) = mean(sum(abs(RX(1:nx1,:)-data1(1:nx1,:)).^2));
-        mse_dec_optphi2_gsvd(k,nn,i)
+        mse_dec_optphi2_gsvd(k,nn,i)  
 
+        % measurement design (numerically)
     if i == 1
         g_M1     = M1;
         g_M2     = M2;
@@ -212,12 +214,5 @@ for i = 1: itotal
     ylabel('MMSE (dB)') 
     hold on
     plot(10*log10(vettSNRdB'),10*log10(mse_dec_optphi2_gsvd(:,:,i)),'--o','LineWidth',1) %opt phi2
-%     plot(10*log10(vettSNRdB'),10*log10(mse_dec_optphi2_numercial(:,:)),'-->','LineWidth',1) %opt phi2 numerical
+    plot(10*log10(vettSNRdB'),10*log10(mse_dec_optphi2_numercial(:,:)),'-->','LineWidth',1) %opt phi2 numerical
 end
-
-    figure(2)
-    plot(10*log10(vettSNRdB'),10*log10(mse_SI_p1_p2),'-','LineWidth',2)
-    grid on
-    xlabel('1/\sigma^2 (dB)')
-    ylabel('MMSE (dB)') 
-    hold on
